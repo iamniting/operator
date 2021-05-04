@@ -22,3 +22,6 @@ bin
 *.swp
 *.swo
 *~
+
+# Test binary, build with `make test`
+testbin
