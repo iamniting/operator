@@ -43,6 +43,9 @@ type AppConfigStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:JSONPath=".spec.desiredCount",name=desiredCount,type=integer
+// +kubebuilder:printcolumn:JSONPath=".status.currentCount",name=currentCount,type=integer
+// +kubebuilder:resource:shortName=ac
 
 // AppConfig is the Schema for the appconfigs API
 type AppConfig struct {
