@@ -75,6 +75,10 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "AppConfig")
 		os.Exit(1)
 	}
+	if err = (&stablev1.AppConfig{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "AppConfig")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")
