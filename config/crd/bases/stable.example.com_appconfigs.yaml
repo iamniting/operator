@@ -8,11 +8,20 @@ metadata:
   creationTimestamp: null
   name: appconfigs.stable.example.com
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .spec.desiredCount
+    name: desiredCount
+    type: integer
+  - JSONPath: .status.currentCount
+    name: currentCount
+    type: integer
   group: stable.example.com
   names:
     kind: AppConfig
     listKind: AppConfigList
     plural: appconfigs
+    shortNames:
+    - ac
     singular: appconfig
   scope: Namespaced
   subresources:
