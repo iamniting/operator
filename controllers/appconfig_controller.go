@@ -20,6 +20,10 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -36,14 +40,63 @@ type AppConfigReconciler struct {
 
 // +kubebuilder:rbac:groups=stable.example.com,resources=appconfigs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=stable.example.com,resources=appconfigs/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 
 func (r *AppConfigReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	_ = context.Background()
-	_ = r.Log.WithValues("appconfig", req.NamespacedName)
+	logger := r.Log.WithValues("appconfig", req.NamespacedName)
 
-	// your logic here
+	instance := &stablev1.AppConfig{}
+	err := r.Client.Get(context.TODO(), req.NamespacedName, instance)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			logger.Info("appconfig resource not found")
+			return ctrl.Result{}, nil
+		}
+		// Error reading the object - requeue the request.
+		return ctrl.Result{}, err
+	}
 
-	return ctrl.Result{}, nil
+	logger.Info("appconfig resource found")
+
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: map[string]string{
+				"app": instance.Name,
+			},
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name:            instance.Name,
+					Image:           instance.Spec.Image,
+					ImagePullPolicy: corev1.PullIfNotPresent,
+				},
+			},
+		},
+	}
+
+	deployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instance.Name,
+			Namespace: instance.Namespace,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: func(n int32) *int32 { return &n }(int32(instance.Spec.DesiredCount)),
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app": instance.Name,
+				},
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: pod.ObjectMeta,
+				Spec:       pod.Spec,
+			},
+		},
+	}
+
+	err = r.Client.Create(context.TODO(), deployment)
+
+	return ctrl.Result{}, err
 }
 
 func (r *AppConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
